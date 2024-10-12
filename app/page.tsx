@@ -18,13 +18,14 @@ import React, { useState } from "react"
 import { createPublicClient, http, parseAbi, encodeFunctionData } from "viem"
 import { sepolia } from "viem/chains"
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts"
-
+import { KERNEL_V3_1 } from "@zerodev/sdk/constants";
+const kernelVersion = KERNEL_V3_1
 const BUNDLER_URL =
-    "https://rpc.zerodev.app/api/v2/bundler/354b2c5e-92ed-47b0-a90f-9c09d9f012e4"
+    "https://rpc.zerodev.app/api/v2/bundler/45a3c5a6-ed17-4244-9af5-ce53e569bc59"
 const PAYMASTER_URL =
-    "https://rpc.zerodev.app/api/v2/paymaster/354b2c5e-92ed-47b0-a90f-9c09d9f012e4"
+    "https://rpc.zerodev.app/api/v2/paymaster/45a3c5a6-ed17-4244-9af5-ce53e569bc59"
 const PASSKEY_SERVER_URL =
-    " https://passkeys.zerodev.app/api/v3/354b2c5e-92ed-47b0-a90f-9c09d9f012e4"
+    " https://passkeys.zerodev.app/api/v3/45a3c5a6-ed17-4244-9af5-ce53e569bc59"
 
 const CHAIN = sepolia
 
@@ -54,6 +55,7 @@ export default function Home() {
     const [userOpHash, setUserOpHash] = useState("")
     const [userOpStatus, setUserOpStatus] = useState("")
     const [userOpCount, setUserOpCount] = useState(0)
+        console.log(kernelVersion)
 
     const createAccountAndClient = async (passkeyValidator: any) => {
         const ecdsaSigner = await toECDSASigner({
@@ -65,7 +67,8 @@ export default function Home() {
         const permissionValidator = await toPermissionValidator(publicClient, {
             signer: ecdsaSigner,
             policies: [sudoPolicy],
-            entryPoint: ENTRYPOINT_ADDRESS_V07
+            entryPoint: ENTRYPOINT_ADDRESS_V07,
+            kernelVersion
         })
 
         sessionKeyAccount = await createKernelAccount(publicClient, {
@@ -73,7 +76,8 @@ export default function Home() {
             plugins: {
                 sudo: passkeyValidator,
                 regular: permissionValidator
-            }
+            },
+            kernelVersion
         })
 
         kernelClient = createKernelAccountClient({
@@ -81,6 +85,7 @@ export default function Home() {
             chain: CHAIN,
             bundlerTransport: http(BUNDLER_URL),
             entryPoint: ENTRYPOINT_ADDRESS_V07,
+          
             middleware: {
                 sponsorUserOperation: async ({ userOperation }) => {
                     const zeroDevPaymaster = await createZeroDevPaymasterClient(
@@ -88,11 +93,13 @@ export default function Home() {
                             chain: CHAIN,
                             transport: http(PAYMASTER_URL),
                             entryPoint: ENTRYPOINT_ADDRESS_V07
+                           
                         }
                     )
                     return zeroDevPaymaster.sponsorUserOperation({
                         userOperation,
                         entryPoint: ENTRYPOINT_ADDRESS_V07
+                        
                     })
                 }
             }
@@ -116,7 +123,9 @@ export default function Home() {
         const passkeyValidator = await toPasskeyValidator(publicClient, {
             webAuthnKey,
             passkeyServerUrl: PASSKEY_SERVER_URL,
-            entryPoint: ENTRYPOINT_ADDRESS_V07
+            entryPoint: ENTRYPOINT_ADDRESS_V07,
+            kernelVersion,
+            validatorContractVersion: "0.0.2"
         })
 
         await createAccountAndClient(passkeyValidator)
